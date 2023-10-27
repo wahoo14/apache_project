@@ -1,0 +1,180 @@
+version: '2'
+networks:
+    datapipeline:
+        driver: bridge
+        ipam:
+            driver: default
+            config:
+                - subnet: "172.18.0.0/16"
+                
+services:
+  postgresql:
+    image: docker.io/bitnami/postgresql:16
+    volumes:
+      - 'postgresql_data:/bitnami/postgresql'
+    environment:
+      - POSTGRESQL_DATABASE=bitnami_airflow
+      - POSTGRESQL_USERNAME=bn_airflow
+      - POSTGRESQL_PASSWORD=bitnami1
+      # ALLOW_EMPTY_PASSWORD is recommended only for development.
+      - ALLOW_EMPTY_PASSWORD=yes
+  
+  redis:
+    image: docker.io/bitnami/redis:7.0
+    volumes:
+      - 'redis_data:/bitnami'
+    environment:
+      # ALLOW_EMPTY_PASSWORD is recommended only for development.
+      - ALLOW_EMPTY_PASSWORD=yes
+  
+  airflow-scheduler:
+    image: docker.io/bitnami/airflow-scheduler:2
+    environment:
+      - AIRFLOW_DATABASE_NAME=bitnami_airflow
+      - AIRFLOW_DATABASE_USERNAME=bn_airflow
+      - AIRFLOW_DATABASE_PASSWORD=bitnami1
+      - AIRFLOW_EXECUTOR=CeleryExecutor
+      - AIRFLOW_WEBSERVER_HOST=airflow
+      - AIRFLOW__WEBSERVER__SECRET_KEY=joralemon
+    volumes:
+      - ./Airflow/dags:/opt/bitnami/airflow/dags
+  
+  airflow-worker:
+    image: docker.io/bitnami/airflow-worker:2
+    environment:
+      - AIRFLOW_DATABASE_NAME=bitnami_airflow
+      - AIRFLOW_DATABASE_USERNAME=bn_airflow
+      - AIRFLOW_DATABASE_PASSWORD=bitnami1
+      - AIRFLOW_EXECUTOR=CeleryExecutor
+      - AIRFLOW_WEBSERVER_HOST=airflow
+      - AIRFLOW__WEBSERVER__SECRET_KEY=joralemon
+    volumes:
+      - ./Airflow/dags:/opt/bitnami/airflow/dags
+  
+  airflow:
+    image: docker.io/bitnami/airflow:2
+    environment:
+      - AIRFLOW_DATABASE_NAME=bitnami_airflow
+      - AIRFLOW_DATABASE_USERNAME=bn_airflow
+      - AIRFLOW_DATABASE_PASSWORD=bitnami1
+      - AIRFLOW_EXECUTOR=CeleryExecutor
+      - AIRFLOW__WEBSERVER__SECRET_KEY=joralemon
+    ports:
+      - "5050:8080"
+    volumes:
+      - //var/run/docker.sock:/var/run/docker.sock
+      - ./Airflow/dags:/opt/bitnami/airflow/dags
+   
+  zookeeper:
+    restart: always
+    image: docker.io/bitnami/zookeeper:3.8
+    ports:
+      - "2181:2181"
+    volumes:
+      - "zookeeper-volume:/bitnami"
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+    networks:
+      datapipeline:
+        ipv4_address: 172.18.0.3
+  
+  kafka:
+    restart: always
+    image: docker.io/bitnami/kafka:3.3
+    container_name: kafka_container
+    ports:
+      - "9093:9093"
+      - "9094:9094"
+    volumes:
+      - "kafka-volume:/bitnami"
+    environment:
+      - KAFKA_BROKER_ID=1
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
+      - ALLOW_PLAINTEXT_LISTENER=yes            
+      - KAFKA_LISTENERS= INTERNAL://0.0.0.0:9092,DOCKER_NETWORK://kafka_container:9093, EXTERNAL://kafka_container:9094
+      - KAFKA_ADVERTISED_LISTENERS= INTERNAL://kafka_container:9092,DOCKER_NETWORK://kafka_container:9093, EXTERNAL://localhost:9094     
+      - KAFKA_ADVERTISED_HOST_NAME= 172.18.0.4   
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP= INTERNAL:PLAINTEXT,DOCKER_NETWORK:PLAINTEXT,EXTERNAL:PLAINTEXT
+      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME= INTERNAL
+      - KAFKA_LOG_RETENTION_MS= 10000
+      - KAFKA_LOG_RETENTION_CHECK_INTERVAL_MS= 5000
+      - KAFKA_LOG_CLEANUP_POLICY=DELETE
+    depends_on:
+      - zookeeper
+    networks:
+      datapipeline:
+        ipv4_address: 172.18.0.4  
+   
+   
+ 
+  spark:
+    image: bitnami/spark:3.3.2
+    environment:
+      - SPARK_MODE=master
+    ports:
+      - '8081:8080'
+      - '7077:7077'
+    networks:
+      datapipeline:
+        ipv4_address: 172.18.0.2
+  spark-worker:
+    image: bitnami/spark:3.3.2
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark:7077
+      - SPARK_WORKER_MEMORY=4G
+      - SPARK_EXECUTOR_MEMORY=4G
+      - SPARK_WORKER_CORES=4
+    ports:
+      - '8082:8081'
+    networks:
+      datapipeline:
+        ipv4_address: 172.18.0.5
+
+
+   
+#  spark:
+#    image: docker.io/jupyter/pyspark-notebook
+#    container_name: spark_master
+#    hostname: spark_master
+#    user: root
+#    environment:
+#      - SPARK_MODE=master
+#      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+#      - SPARK_RPC_ENCRYPTION_ENABLED=no
+#      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+#      - SPARK_SSL_ENABLED=no
+#      - JUPYTER_ENABLE_LAB=yes
+#      - CHOWN_HOME=yes
+#      - NotebookApp.token=''
+#      - SPARK_MASTER_PORT=7077
+#      - SPARK_MASTER="spark://172.18.0.2:7077"
+#      - SPARK_WORKLOAD="master"
+#    ports:
+#      - "8888:8888"
+#      - "7077:7077"
+#    volumes:
+#      - ../streamingProje:/home
+#      - /opt/spark/conf/spark-defaults.conf:/opt/bitnami/spark/conf/spark-defaults.conf
+#      - /opt/spark/jars:/opt/bitnami/spark/ivy:z
+#    networks:
+#      datapipeline:
+#        ipv4_address: 172.18.0.2  
+ 
+  docker-proxy:
+    image: bobrik/socat
+    command: "TCP4-LISTEN:2375,fork,reuseaddr UNIX-CONNECT:/var/run/docker.sock"
+    ports:
+      - "2376:2375"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      
+      
+     
+volumes:
+  postgresql_data:
+    driver: local
+  redis_data:
+    driver: local
+  kafka-volume:
+  zookeeper-volume:

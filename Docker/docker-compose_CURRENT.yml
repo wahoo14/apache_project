@@ -1,0 +1,78 @@
+# docker-compose.yml
+version: "3.7"
+networks:
+    datapipeline:
+        driver: bridge
+        ipam:
+            driver: default
+            config:
+                - subnet: "172.18.0.0/16"
+
+services:
+  zookeeper:
+    restart: always
+    image: docker.io/bitnami/zookeeper:3.8
+    ports:
+      - "2181:2181"
+    volumes:
+      - "zookeeper-volume:/bitnami"
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+    networks:
+      datapipeline:
+        ipv4_address: 172.18.0.3
+  kafka:
+    restart: always
+    image: docker.io/bitnami/kafka:3.3
+    ports:
+      - "9093:9093"
+    volumes:
+      - "kafka-volume:/bitnami"
+    environment:
+      - KAFKA_BROKER_ID=1
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
+      - ALLOW_PLAINTEXT_LISTENER=yes            
+            
+      - KAFKA_CFG_LISTENERS= INTERNAL://0.0.0.0:9092,OUTSIDE://172.18.0.4:9093
+      - KAFKA_CFG_ADVERTISED_LISTENERS= INTERNAL://kafka:9092,OUTSIDE://172.18.0.4:9093
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP= INTERNAL:PLAINTEXT,OUTSIDE:PLAINTEXT
+      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME= INTERNAL
+        
+      - KAFKA_LOG_RETENTION_MS= 10000
+      - KAFKA_LOG_RETENTION_CHECK_INTERVAL_MS= 5000
+      - KAFKA_LOG_CLEANUP_POLICY=DELETE
+    depends_on:
+      - zookeeper
+    networks:
+      datapipeline:
+        ipv4_address: 172.18.0.4
+  spark:
+    image: docker.io/jupyter/pyspark-notebook
+    container_name: spark_master
+    hostname: spark_master
+    user: root
+    environment:
+      - SPARK_MODE=master
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+      - SPARK_SSL_ENABLED=no
+      - JUPYTER_ENABLE_LAB=yes
+      - CHOWN_HOME=yes
+      - NotebookApp.token=''
+      - SPARK_LOCAL_HOSTNAME=localhost
+    ports:
+      - "8888:8888"
+    volumes:
+      - ../streamingProje:/home
+      - /opt/spark/conf/spark-defaults.conf:/opt/bitnami/spark/conf/spark-defaults.conf
+      - /opt/spark/jars:/opt/bitnami/spark/ivy:z
+    networks:
+      datapipeline:
+        ipv4_address: 172.18.0.2
+
+
+  
+volumes:
+  kafka-volume:
+  zookeeper-volume:

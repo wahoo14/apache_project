@@ -1,0 +1,58 @@
+https://linux.how2shout.com/learn-ros-noetic-installation-on-ubuntu-20-04-lts/
+--- complete
+
+https://www.hackster.io/shahizat/lidar-integration-with-ros-noetic-on-raspberry-pi-os-8ea140
+--- step 12
+
+
+1)
+cd /home/day2pj/catkin_ws
+roslaunch rplidar_ros view_rplidar_a1.launch
+
+2)
+roslaunch rosbridge_server rosbridge_websocket.launch
+
+3)
+launch docker desktop
+
+4)
+run docker-compose up -d on yml
+
+5)
+activate virtual env
+
+6)
+run ingest.py
+
+7)
+docker logs spark_master to get url/token of jupyter notebook
+
+8)
+http://127.0.0.1:8888/lab/tree/Untitled.ipynb
+
+
+username:user
+pw: bitnami
+
+https://saturncloud.io/blog/apache-spark-and-apache-airflow-connection-in-dockerbased-solutions/
+
+
+
+
+https://saturncloud.io/blog/apache-spark-and-apache-airflow-connection-in-dockerbased-solutions/
+
+
+https://answers.ros.org/question/362999/ros-remote-master-can-see-topics-but-no-data/
+
+
+rpi is 192.168.1.131
+argo is 192.168.1.113
+
+ROS URI = 192.168.1.131:11311/
+
+
+-----investigate topic retention policies
+
+docker cp -L your_program.py spark_spark-master_1:/opt/bitnami/spark/anyfilename.py
+docker logs spark_spark-master_1   <-get ip address/port of spark
+docker-compose exec spark_spark-master_1 spark-submit --master spark://172.18.0.2:7077 anyfilename.py
