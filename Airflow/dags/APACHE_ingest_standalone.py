@@ -3,27 +3,14 @@ from airflow.utils.dates import days_ago
 from airflow.providers.docker.operators.docker import DockerOperator
 from datetime import timedelta
 
-"""
-OOS - log into rpi
-    - launch ros/rosbridge
-    - launch docker desktop
-    - run docker-compose up -d
-In Scope?
-    - activate virtual env
-    - run ingest.py
-    - run pyspark consume script
-        - TODO: convert jupyter notebook to standalone script
-    - pass dag into airflow and run
-"""
-
 
 with DAG(
-    dag_id= 'streaming_pipeling_DAG',
-    description='Ingestion and consumption, pushing data into kafka and consuming into spark streaming.',
+    dag_id= 'APACHE_ingest_standalone',
+    description='standalone dag for pushing lidar data into the LazerScan kafka topic.',
     schedule_interval=None,
     start_date=days_ago(2),
     catchup=False,
-    tags=['docker_test'],
+    tags=['Apache Data Engineering Project'],
     default_args={
         'owner': 'airflow',
         'email': ['airflow@example.com'],
@@ -36,7 +23,7 @@ with DAG(
 ) as dag:
 
     docker_test_task = DockerOperator(
-        task_id='ingestion',
+        task_id='ingest',
         image='ingest',
         api_version='auto',
         auto_remove=True,

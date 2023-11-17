@@ -56,3 +56,8 @@ ROS URI = 192.168.1.131:11311/
 docker cp -L your_program.py spark_spark-master_1:/opt/bitnami/spark/anyfilename.py
 docker logs spark_spark-master_1   <-get ip address/port of spark
 docker-compose exec spark_spark-master_1 spark-submit --master spark://172.18.0.2:7077 anyfilename.py
+
+
+
+data investigation
+https://answers.ros.org/question/198843/need-explanation-on-sensor_msgslaserscanmsg/
