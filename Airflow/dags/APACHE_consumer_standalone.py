@@ -22,7 +22,7 @@ with DAG(
     }
 ) as dag:
 
-    docker_test_task = DockerOperator(
+    consumer_task = DockerOperator(
         task_id='consumer',
         image='consumer',
         api_version='auto',
@@ -33,7 +33,7 @@ with DAG(
         network_mode='apache_datapipeline'
     )
 
-docker_test_task
+consumer_task
 
 if __name__ == "__main__":
     dag.test()

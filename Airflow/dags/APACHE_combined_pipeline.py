@@ -1,7 +1,9 @@
 from airflow import DAG
 from airflow.utils.dates import days_ago
 from airflow.providers.docker.operators.docker import DockerOperator
+from airflow.operators.dummy_operator import DummyOperator
 from datetime import timedelta
+
 
 with DAG(
     dag_id= 'APACHE_combined_pipeline',
@@ -20,9 +22,16 @@ with DAG(
         'retry_delay': timedelta(minutes=5)
     }
 ) as dag:
+    start_dag = DummyOperator(
+        task_id='start_dag'
+        )
+    
+    end_dag = DummyOperator(
+        task_id='end_dag'
+        )        
 
-    docker_test_task = DockerOperator(
-        task_id='ingestion',
+    ingest_task = DockerOperator(
+        task_id='ingest',
         image='ingest',
         api_version='auto',
         auto_remove=True,
@@ -32,7 +41,23 @@ with DAG(
         network_mode='apache_datapipeline'
     )
 
-docker_test_task
+    consumer_task = DockerOperator(
+        task_id='consumer',
+        image='consumer',
+        api_version='auto',
+        auto_remove=True,
+        mount_tmp_dir=False,
+        container_name='consumer',
+        docker_url='tcp://docker-proxy:2375',
+        network_mode='apache_datapipeline'
+    )
+
+
+    start_dag >> ingest_task
+    start_dag >> consumer_task
+    ingest_task >> end_dag
+    consumer_task >> end_dag
+
 
 if __name__ == "__main__":
     dag.test()

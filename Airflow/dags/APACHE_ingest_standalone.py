@@ -22,7 +22,7 @@ with DAG(
     }
 ) as dag:
 
-    docker_test_task = DockerOperator(
+    ingest_task = DockerOperator(
         task_id='ingest',
         image='ingest',
         api_version='auto',
@@ -33,7 +33,7 @@ with DAG(
         network_mode='apache_datapipeline'
     )
 
-docker_test_task
+ingest_task
 
 if __name__ == "__main__":
     dag.test()
